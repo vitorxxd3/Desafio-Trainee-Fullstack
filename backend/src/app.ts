@@ -1,7 +1,9 @@
 
 import express from "express";
 import cors from "cors";
+
 import { authRoutes } from "./routes/auth.routes.js";
+import { documentosRoutes } from "./routes/documentos.routes.js";
 
 export const app = express();
 
@@ -16,3 +18,4 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/documentos", documentosRoutes);
