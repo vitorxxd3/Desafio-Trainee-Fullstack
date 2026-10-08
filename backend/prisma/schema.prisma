@@ -1,0 +1,51 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id         Int         @id @default(autoincrement())
+  nome       String      @db.VarChar(100)
+  email      String      @unique @db.VarChar(255)
+  senha_hash String
+  criado_em  DateTime    @default(now())
+
+  documentos Documento[]
+
+  @@map("usuarios")
+}
+
+model Documento {
+  id            Int       @id @default(autoincrement())
+  titulo        String    @db.VarChar(200)
+  conteudo      String    @db.Text
+  autor_id      Int
+  criado_em     DateTime  @default(now())
+  atualizado_em DateTime  @updatedAt
+
+  autor   Usuario @relation(fields: [autor_id], references: [id])
+  analise Analise?
+
+  @@map("documentos")
+}
+
+model Analise {
+  id               Int      @id @default(autoincrement())
+  documento_id     Int      @unique
+  tipo             String   @db.VarChar(20)
+  resumo           String   @db.Text
+  pontos_de_atencao Json
+  analisador       String   @db.VarChar(30)
+  criado_em        DateTime @default(now())
+
+ 
+documento Documento @relation(fields: [documento_id], references: [id], onDelete: Cascade)
+
+
+  @@map("analises")
+}

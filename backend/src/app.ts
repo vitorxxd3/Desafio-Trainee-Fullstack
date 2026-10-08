@@ -1,6 +1,7 @@
 
 import express from "express";
 import cors from "cors";
+import { authRoutes } from "./routes/auth.routes.js";
 
 export const app = express();
 
@@ -13,3 +14,5 @@ app.get("/health", (_req, res) => {
     mensagem: "API rodando com sucesso",
   });
 });
+
+app.use("/auth", authRoutes);

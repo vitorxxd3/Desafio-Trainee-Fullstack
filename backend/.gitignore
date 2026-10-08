@@ -1,0 +1,37 @@
+
+# Dependências
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Variáveis de ambiente e senhas
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Arquivos compilados
+dist/
+build/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Configurações locais do VS Code
+.vscode/
+
+# Arquivos temporários
+*.tmp
+*.tsbuildinfo
+
+# Prisma - banco local (se houver)
+*.db
+*.db-journal
