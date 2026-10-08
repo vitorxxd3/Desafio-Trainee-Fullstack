@@ -1,6 +1,6 @@
 
 import { Router } from "express";
-
+import { gerarAnalise } from "../controllers/analise.controller.js";
 import { autenticar } from "../middlewares/auth.middleware.js";
 
 import {
@@ -30,3 +30,6 @@ documentosRoutes.put("/:id", editarDocumento);
 
 
 documentosRoutes.delete("/:id", excluirDocumento);
+
+
+documentosRoutes.post("/:id/analise", gerarAnalise);
