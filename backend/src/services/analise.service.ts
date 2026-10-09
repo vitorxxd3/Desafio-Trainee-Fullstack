@@ -28,7 +28,8 @@ export async function analisarDocumento(
     throw new DocumentoSemPermissaoError();
   }
 
-  const analisador = criarAnalisador();
+  const nomeAnalisador = process.env.ANALISADOR ?? "regras";
+const analisador = criarAnalisador();
 
   const resultado = await analisador.analisar(
     documento.conteudo
@@ -44,14 +45,14 @@ export async function analisarDocumento(
       tipo: resultado.tipo,
       resumo: resultado.resumo,
       pontos_de_atencao: resultado.pontos_de_atencao,
-      analisador: "regras",
+      analisador: nomeAnalisador,
     },
 
     update: {
       tipo: resultado.tipo,
       resumo: resultado.resumo,
       pontos_de_atencao: resultado.pontos_de_atencao,
-      analisador: "regras",
+      analisador: nomeAnalisador,
       criado_em: new Date(),
     },
   });
