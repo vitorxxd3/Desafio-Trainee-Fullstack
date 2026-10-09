@@ -170,7 +170,7 @@ export function DocumentoForm() {
 
           <button
             type="submit"
-            disabled={salvando || (editando && Boolean(erro))}
+           disabled={salvando}
           >
             {salvando ? "Salvando..." : "Salvar documento"}
           </button>
