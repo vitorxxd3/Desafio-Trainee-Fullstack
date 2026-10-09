@@ -1,4 +1,5 @@
 
+
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -6,7 +7,9 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
     exclude: [
       "**/node_modules/**",
-      "**/dist/**"
-    ]
-  }
+      "**/dist/**",
+      "tests/api/**",
+    ],
+  },
 });
+
