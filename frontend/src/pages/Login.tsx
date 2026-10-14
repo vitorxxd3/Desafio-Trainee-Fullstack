@@ -64,6 +64,23 @@ export function Login() {
 
   return (
     <main className="auth-container">
+      <aside className="auth-showcase" aria-label="Sobre o Analisador de Documentos">
+        <div className="auth-showcase-brand">
+          <span className="auth-showcase-mark" aria-hidden="true">▤</span>
+          Analisador de Documentos
+        </div>
+        <div>
+          <span className="auth-showcase-tag">Plataforma de documentos</span>
+          <h2>Mais clareza para <span>cada documento.</span></h2>
+          <p>Organize seus arquivos, encontre informações e transforme textos em análises acessíveis, em um só lugar.</p>
+        </div>
+        <div className="auth-showcase-features" aria-label="Recursos da plataforma">
+          <span>Organização inteligente</span>
+          <span>Histórico consultável</span>
+          <span>Análise por regras e IA</span>
+        </div>
+      </aside>
+
       <div className="auth-card">
         <h1>Analisador de Documentos</h1>
 

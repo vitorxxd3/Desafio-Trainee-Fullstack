@@ -214,7 +214,7 @@ export function Documentos() {
         )}
 
         {!carregando && !erro && documentos.map((documento) => (
-          <article className="documento-card" key={documento.id}>
+          <article className={`documento-card ${documento.tipo ? "documento-analisado" : "documento-pendente"}`} key={documento.id}>
             <h3>
               <Link to={`/documentos/${documento.id}`}>{documento.titulo}</Link>
             </h3>

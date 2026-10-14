@@ -1,3 +1,4 @@
+import { Link, NavLink } from "react-router-dom";
 import { HistoricoAnalises } from "./pages/HistoricoAnalises";
 
 import {
@@ -20,7 +21,23 @@ function RotaProtegida() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Outlet />;
+  return (
+    <div className="app-layout">
+      <header className="app-navbar">
+        <div className="navbar-inner">
+          <Link className="app-brand" to="/documentos" aria-label="Analisador de Documentos - início">
+            <span className="app-brand-mark" aria-hidden="true">▤</span>
+            <span className="app-brand-name">Analisador de Documentos</span>
+          </Link>
+          <nav className="app-nav" aria-label="Navegação principal">
+            <NavLink to="/documentos" className={({ isActive }) => isActive ? "app-nav-item is-active" : "app-nav-item"}>Documentos</NavLink>
+            <NavLink to="/historico-analises" className={({ isActive }) => isActive ? "app-nav-item is-active" : "app-nav-item"}>Histórico</NavLink>
+          </nav>
+        </div>
+      </header>
+      <Outlet />
+    </div>
+  );
 }
 
 function App() {
