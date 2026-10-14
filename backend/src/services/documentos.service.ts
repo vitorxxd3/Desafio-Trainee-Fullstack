@@ -1,4 +1,4 @@
-
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import type { DocumentoInput } from "../schemas/documento.schema.js";
 
@@ -7,40 +7,59 @@ type Ordem = "asc" | "desc";
 export async function buscarDocumentos(
   usuarioId: number,
   ordem: Ordem,
-  meus: boolean
+  meus: boolean,
+  busca?: string,
+  pagina?: number,
+  limite?: number
 ) {
+  const where: Prisma.DocumentoWhereInput = {
+    ...(meus ? { autor_id: usuarioId } : {}),
+    ...(busca ? { titulo: { contains: busca, mode: "insensitive" } } : {}),
+  };
+
+  // Sem parâmetros de paginação, a resposta continua sendo o array original.
+  const paginar = pagina !== undefined || limite !== undefined;
+  const paginaAtual = pagina ?? 1;
+  const limiteAtual = limite ?? 10;
+
   const documentos = await prisma.documento.findMany({
-    where: meus ? { autor_id: usuarioId } : undefined,
-
-    orderBy: [
-      { criado_em: ordem },
-      { id: ordem }
-    ],
-
-    include: {
-      autor: {
-        select: {
-          id: true,
-          nome: true
-        }
-      },
-      analise: {
-        select: {
-          tipo: true
-        }
-      }
-    }
+    where,
+    orderBy: [{ criado_em: ordem }, { id: ordem }],
+    ...(paginar
+      ? { skip: (paginaAtual - 1) * limiteAtual, take: limiteAtual }
+      : {}),
+    select: {
+      id: true,
+      titulo: true,
+      criado_em: true,
+      autor: { select: { id: true, nome: true } },
+      analise: { select: { tipo: true } },
+    },
   });
 
-  return documentos.map((documento) => ({
+  const dados = documentos.map((documento) => ({
     id: documento.id,
     titulo: documento.titulo,
     autor: documento.autor,
     criado_em: documento.criado_em.toISOString(),
-    tipo: documento.analise?.tipo ?? null
+    tipo: documento.analise?.tipo ?? null,
   }));
-}
 
+  if (!paginar) {
+    return dados;
+  }
+
+  const total = await prisma.documento.count({ where });
+  return {
+    dados,
+    paginacao: {
+      pagina: paginaAtual,
+      limite: limiteAtual,
+      total,
+      total_paginas: Math.ceil(total / limiteAtual),
+    },
+  };
+}
 
 export async function criarDocumento(
   dados: DocumentoInput,
@@ -53,12 +72,7 @@ export async function criarDocumento(
       autor_id: usuarioId,
     },
     include: {
-      autor: {
-        select: {
-          id: true,
-          nome: true,
-        },
-      },
+      autor: { select: { id: true, nome: true } },
     },
   });
 
@@ -73,24 +87,16 @@ export async function criarDocumento(
   };
 }
 
-
 export async function buscarDocumentoPorId(id: number) {
   const documento = await prisma.documento.findUnique({
     where: { id },
     include: {
-      autor: {
-        select: {
-          id: true,
-          nome: true,
-        },
-      },
+      autor: { select: { id: true, nome: true } },
       analise: true,
     },
   });
 
-  if (!documento) {
-    return null;
-  }
+  if (!documento) return null;
 
   return {
     id: documento.id,
@@ -103,16 +109,13 @@ export async function buscarDocumentoPorId(id: number) {
       ? {
           tipo: documento.analise.tipo,
           resumo: documento.analise.resumo,
-          pontos_de_atencao:
-            documento.analise.pontos_de_atencao,
+          pontos_de_atencao: documento.analise.pontos_de_atencao,
           analisador: documento.analise.analisador,
-          criado_em:
-            documento.analise.criado_em.toISOString(),
+          criado_em: documento.analise.criado_em.toISOString(),
         }
       : null,
   };
 }
-
 
 export class DocumentoNaoEncontradoError extends Error {
   constructor() {
@@ -126,7 +129,6 @@ export class DocumentoSemPermissaoError extends Error {
   }
 }
 
-// PUT - Atualizar documento
 export async function atualizarDocumento(
   id: number,
   usuarioId: number,
@@ -135,72 +137,42 @@ export async function atualizarDocumento(
   await prisma.$transaction(async (tx) => {
     const documentoAtual = await tx.documento.findUnique({
       where: { id },
-      select: {
-        autor_id: true,
-        conteudo: true,
-      },
+      select: { autor_id: true, conteudo: true },
     });
 
-    if (!documentoAtual) {
-      throw new DocumentoNaoEncontradoError();
-    }
-
+    if (!documentoAtual) throw new DocumentoNaoEncontradoError();
     if (documentoAtual.autor_id !== usuarioId) {
       throw new DocumentoSemPermissaoError();
     }
 
-    const conteudoAlterado =
-      documentoAtual.conteudo !== dados.conteudo;
-
+    const conteudoAlterado = documentoAtual.conteudo !== dados.conteudo;
     await tx.documento.update({
       where: { id },
-      data: {
-        titulo: dados.titulo,
-        conteudo: dados.conteudo,
-      },
+      data: { titulo: dados.titulo, conteudo: dados.conteudo },
     });
 
-    // A análise só é apagada se o conteúdo mudar
     if (conteudoAlterado) {
-      await tx.analise.deleteMany({
-        where: { documento_id: id },
-      });
+      await tx.analise.deleteMany({ where: { documento_id: id } });
     }
   });
 
-  const documentoAtualizado = await buscarDocumentoPorId(id);
-
-  if (!documentoAtualizado) {
-    throw new DocumentoNaoEncontradoError();
-  }
-
-  return documentoAtualizado;
+  const atualizado = await buscarDocumentoPorId(id);
+  if (!atualizado) throw new DocumentoNaoEncontradoError();
+  return atualizado;
 }
 
-// DELETE - Excluir documento
-export async function removerDocumento(
-  id: number,
-  usuarioId: number
-) {
+export async function removerDocumento(id: number, usuarioId: number) {
   await prisma.$transaction(async (tx) => {
     const documento = await tx.documento.findUnique({
       where: { id },
-      select: {
-        autor_id: true,
-      },
+      select: { autor_id: true },
     });
 
-    if (!documento) {
-      throw new DocumentoNaoEncontradoError();
-    }
-
+    if (!documento) throw new DocumentoNaoEncontradoError();
     if (documento.autor_id !== usuarioId) {
       throw new DocumentoSemPermissaoError();
     }
 
-    await tx.documento.delete({
-      where: { id },
-    });
+    await tx.documento.delete({ where: { id } });
   });
 }
-

@@ -1,17 +1,12 @@
-
 import type { Request, Response } from "express";
-
 import { analisarDocumento } from "../services/analise.service.js";
-
+import { ErroAnalisadorIA } from "../analyzers/erro-analisador-ia.js";
 import {
   DocumentoNaoEncontradoError,
   DocumentoSemPermissaoError,
 } from "../services/documentos.service.js";
 
-export async function gerarAnalise(
-  req: Request,
-  res: Response
-) {
+export async function gerarAnalise(req: Request, res: Response) {
   const idParametro = req.params.id;
 
   if (
@@ -27,14 +22,8 @@ export async function gerarAnalise(
 
   try {
     const usuarioId = res.locals.usuarioId as number;
-
-    const analise = await analisarDocumento(
-      Number(idParametro),
-      usuarioId
-    );
-
+    const analise = await analisarDocumento(Number(idParametro), usuarioId);
     return res.status(201).json(analise);
-
   } catch (error) {
     if (error instanceof DocumentoNaoEncontradoError) {
       return res.status(404).json({
@@ -50,8 +39,14 @@ export async function gerarAnalise(
       });
     }
 
-    console.error(error);
+    if (error instanceof ErroAnalisadorIA) {
+      return res.status(error.statusHttp).json({
+        erro: "ERRO_ANALISADOR",
+        mensagem: error.message,
+      });
+    }
 
+    console.error(error);
     return res.status(500).json({
       erro: "ERRO_INTERNO",
       mensagem: "Erro interno no servidor.",
