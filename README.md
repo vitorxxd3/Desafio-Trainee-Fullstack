@@ -4,24 +4,23 @@ Aplicação web fullstack para cadastro, gerenciamento e análise automática de
 > **Desafio técnico — Trainee Fullstack.** Os textos utilizados são fictícios e têm finalidade exclusivamente demonstrativa. As análises são automatizadas e **não substituem avaliação jurídica profissional**.
 
 ## Funcionalidades
-- **Usuários:** cadastro com validação de dados, e-mail único sem distinção entre maiúsculas e minúsculas, login com JWT e logout.
-- **Documentos:** criação, listagem, visualização, edição e exclusão; ordenação crescente ou decrescente por data e filtro para mostrar apenas os documentos do usuário autenticado.
-- **Permissões:** usuários autenticados podem visualizar os documentos; somente o autor pode editar, excluir ou executar a análise de um documento.
-- **Análise:** classificação em `contrato`, `peticao`, `decisao`, `notificacao` ou `outro`; resumo limitado a 300 caracteres e lista de pontos de atenção.
-- **IA opcional:** análise contextual com Google Gemini, com o mesmo formato de resposta e sem alterar os endpoints.
-- **Persistência:** usuários, documentos e análises armazenados em PostgreSQL, com migrations gerenciadas pelo Prisma.
-- **Interface:** páginas responsivas, mensagens de erro, estados de carregamento e confirmação antes da exclusão.
-- **Testes:** testes automatizados do analisador usando os seis exemplos fornecidos no desafio, além de testes de integração da API com banco PostgreSQL separado.
+- **Autenticação:** cadastro e login com JWT, validação de dados e controle de permissões.
+- **Documentos:** criação, listagem, edição, exclusão, ordenação, filtro por autor, **busca por título e paginação**.
+- **Importação:** extração de texto de arquivos `.txt` e `.pdf` antes de salvar o documento.
+- **Análise:** classificação, resumo de até 300 caracteres e pontos de atenção; modo determinístico por regras ou **Google Gemini opcional**.
+- **Histórico:** versões anteriores arquivadas em PostgreSQL, consultáveis mesmo após alteração do texto ou exclusão do documento.
+- **Interface:** páginas responsivas, estados de carregamento, validações e mensagens de erro.
+- **Testes:** casos oficiais do analisador, integração da API com banco separado e React Testing Library.
 
 ## Tecnologias
 | Camada | Tecnologias |
 | --- | --- |
 | Front-end | React, TypeScript, Vite, React Router, Axios, CSS |
-| Back-end | Node.js, TypeScript, Express, Zod |
+| Back-end | Node.js, TypeScript, Express, Zod, Multer e pdf-parse |
 | Autenticação | JWT (`jsonwebtoken`) e `bcryptjs` |
 | Banco de dados | PostgreSQL e Prisma ORM |
 | IA opcional | Google Gemini (`@google/genai`), respostas estruturadas e Zod |
-| Testes | Vitest e Supertest |
+| Testes | Vitest, Supertest, React Testing Library e jsdom |
 | Qualidade | ESLint (front-end), TypeScript e Git |
 
 ## Estrutura do projeto
@@ -42,87 +41,84 @@ Aplicação web fullstack para cadastro, gerenciamento e análise automática de
 │   │   └── server.ts
 │   ├── tests/
 │   │   ├── analisador-regras.test.ts
+│   │   ├── analisador-gemini.test.ts
 │   │   └── api/                # Testes de integração com Supertest
 │   └── .env.example
 ├── frontend/
 │   ├── src/
-│   │   ├── pages/              # Cadastro, login e telas de documentos
+│   │   ├── pages/              # Telas e testes do front-end
 │   │   ├── services/api.ts     # Cliente HTTP com token JWT
 │   │   └── App.tsx             # Rotas e proteção de páginas
+│   ├── vitest.config.ts
 │   └── .env.example
 ├── exemplos/                   # Seis entradas e saídas esperadas do desafio
 └── README.md
 ```
 
-## Como executar localmente
-### 1. Pré-requisitos
-- **Node.js 22.12 ou superior**, com npm disponível (uma versão LTS recente é recomendada).
-- **PostgreSQL** instalado e em execução (desenvolvimento realizado com PostgreSQL 17).
-- **Git** e um editor, como VS Code.
-- Acesso a um usuário PostgreSQL autorizado a criar bancos e aplicar migrations.
+## Como executar o projeto
 
-Confira a instalação:
+> **Execução local, sem Docker.** O projeto possui duas aplicações independentes (`backend` e `frontend`) e utiliza PostgreSQL. Na primeira execução, prepare o banco de dados e instale as dependências; nas próximas, basta iniciar os dois servidores.
+
+### Pré-requisitos
+
+- **Node.js 22.12 ou superior**, npm e Git.
+- **PostgreSQL** instalado e em execução (testado com PostgreSQL 17).
+- Um usuário PostgreSQL com permissão para criar os bancos e aplicar as migrations.
+
+Confira o Node.js e o npm com `node --version` e `npm --version`.
+
+### 1. Clonar o repositório
+
+A implementação está na branch `feat/estrutura-inicial`. Execute no terminal:
 
 ```bash
-node --version
-npm --version
-```
-
-### 2. Clonar o repositório
-```bash
-git clone https://github.com/vitorxxd3/Desafio-Trainee-Fullstack.git
+git clone --branch feat/estrutura-inicial https://github.com/vitorxxd3/Desafio-Trainee-Fullstack.git
 cd Desafio-Trainee-Fullstack
 ```
 
-> A implementação está na branch `feat/estrutura-inicial` enquanto o Pull Request não for integrado à `main`. Nesse período, execute `git switch feat/estrutura-inicial` após clonar.
+### 2. Criar o banco de dados
 
-### 3. Criar o banco de dados
-No **pgAdmin**, conecte-se ao PostgreSQL e crie um banco chamado `analisador_documentos` em **Databases → Create → Database**.
+No **pgAdmin**, conecte-se ao PostgreSQL, clique em **Databases → Create → Database** e crie o banco `analisador_documentos`.
 
-Como alternativa, em um editor SQL conectado ao banco administrativo `postgres`, execute:
+Também é possível executar no editor SQL conectado ao banco administrativo `postgres`:
 
 ```sql
 CREATE DATABASE analisador_documentos;
 ```
 
-Não é necessário criar as tabelas manualmente: elas serão geradas pelas migrations.
+**Crie somente o banco.** As tabelas de usuários, documentos, análises e histórico serão criadas automaticamente pelas migrations do Prisma.
 
-### 4. Configurar e iniciar o back-end
-Em um terminal, acesse a pasta `backend`:
+### 3. Preparar e iniciar o back-end — Terminal 1
+
+A partir da pasta raiz do repositório:
 
 ```bash
 cd backend
 npm ci
 ```
 
-Crie um arquivo **`backend/.env`** com base em `backend/.env.example`. No PowerShell (Windows):
+Crie o arquivo privado `backend/.env` a partir do exemplo. **Windows (PowerShell):**
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-No macOS/Linux:
+**macOS/Linux:** `cp .env.example .env`.
 
-```bash
-cp .env.example .env
-```
-
-Exemplo do conteúdo, substituindo os valores ilustrativos pelas suas configurações locais:
+Edite `backend/.env` com os dados da sua instalação:
 
 ```dotenv
 DATABASE_URL="postgresql://postgres:SUA_SENHA@localhost:5432/analisador_documentos?schema=public"
 PORT=3001
-JWT_SECRET="DEFINA_UMA_CHAVE_SECRETA_LONGA_E_ALEATORIA"
+JWT_SECRET="SUBSTITUA_POR_UMA_CHAVE_LONGA_E_ALEATORIA"
 ANALISADOR=regras
 GEMINI_API_KEY=
 GEMINI_MODELO=gemini-3.1-flash-lite
 ```
 
-O Gemini é **opcional**. Para reproduzir o desafio sem serviços externos, deixe `ANALISADOR=regras` e `GEMINI_API_KEY` vazio.
+Substitua `SUA_SENHA` pela senha do PostgreSQL e defina um `JWT_SECRET` próprio. Caso a senha contenha caracteres especiais, codifique-os corretamente na URL. **Para rodar o desafio, não é necessária uma chave Gemini:** `ANALISADOR=regras` funciona sem acesso a serviços externos.
 
-**Atenção:** `SUA_SENHA` é apenas um marcador. Se sua senha tiver caracteres especiais, eles precisam estar corretamente codificados na URL de conexão. Nunca publique o `.env` nem o segredo JWT.
-
-Gere o cliente Prisma, aplique as migrations e inicie a API:
+Ainda na pasta `backend`, execute na ordem:
 
 ```bash
 npx prisma generate
@@ -130,38 +126,32 @@ npx prisma migrate deploy
 npm run dev
 ```
 
-A API ficará disponível em **`http://localhost:3001`**. Para verificar:
+`prisma generate` gera o cliente de acesso ao banco; `migrate deploy` aplica as migrations existentes **sem precisar criar as tabelas manualmente**; `npm run dev` inicia a API.
 
-```text
-GET http://localhost:3001/health
-```
+**API:** http://localhost:3001 — **Verificação:** [http://localhost:3001/health](http://localhost:3001/health). A resposta esperada é `{"status":"ok","mensagem":"API rodando com sucesso"}`.
 
-Resposta esperada:
+### 4. Preparar e iniciar o front-end — Terminal 2
 
-```json
-{
-  "status": "ok",
-  "mensagem": "API rodando com sucesso"
-}
-```
-
-> Para compilar e iniciar a versão compilada, use `npm run build` e `npm start` na pasta `backend`.
-
-### 5. Configurar e iniciar o front-end
-**Mantenha o back-end em execução.** Abra outro terminal, a partir da raiz do repositório:
+**Mantenha o Terminal 1 aberto.** Abra um segundo terminal **na raiz do repositório** e execute:
 
 ```bash
 cd frontend
 npm ci
 ```
 
-Crie `frontend/.env` com base no `.env.example`:
+Crie o arquivo privado `frontend/.env`. **Windows (PowerShell):**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+**macOS/Linux:** `cp .env.example .env`.
+
+Confira o valor no `frontend/.env`:
 
 ```dotenv
 VITE_API_URL=http://localhost:3001
 ```
-
-Esse valor é o endereço público da API local; não coloque segredos em variáveis iniciadas por `VITE_`.
 
 Inicie a interface:
 
@@ -169,23 +159,90 @@ Inicie a interface:
 npm run dev
 ```
 
-Abra **`http://localhost:5173`** no navegador (ou a porta exibida pelo Vite). Cadastre um usuário fictício, faça login e crie um documento para testar o fluxo.
+Abra **http://localhost:5173** (ou a porta informada pelo Vite), cadastre uma conta fictícia e faça login. Você poderá criar documentos, importar TXT/PDF, analisar, pesquisar e consultar o histórico.
 
-Para conferir a versão de produção do front-end:
+### Próximas execuções e Gemini (opcional)
+
+Depois da configuração inicial, não é necessário repetir `npm ci` nem as migrations a cada inicialização: com o PostgreSQL em execução, use `npm run dev` em `backend` e em `frontend`, cada um em seu próprio terminal. **Ao baixar novas migrations**, execute `npx prisma migrate deploy` no `backend`.
+
+Para ativar a análise com IA, altere **somente o `backend/.env`** para `ANALISADOR=gemini`, informe `GEMINI_API_KEY` e mantenha `GEMINI_MODELO=gemini-3.1-flash-lite`. Reinicie o back-end. A chave é opcional, privada e nunca deve ir para o front-end ou GitHub. Os testes oficiais continuam usando o analisador por regras.
+
+## Como executar os testes
+
+Os comandos abaixo devem ser executados **nas pastas indicadas**. Os testes unitários e de interface não precisam de chave Gemini; os testes de integração usam um banco PostgreSQL **exclusivo para testes**.
+
+### 1. Testes unitários do back-end (Vitest)
+
+Na raiz do repositório:
 
 ```bash
-npm run build
-npm run lint
+cd backend
+npm test
 ```
+
+Verificam o analisador por regras contra os **seis arquivos oficiais** de `exemplos/` (incluindo casos Unicode), além da integração Gemini simulada, sem chamadas reais à API externa. O comando não executa os testes de integração com banco.
+
+### 2. Testes do front-end (Vitest + React Testing Library)
+
+Abra outro terminal **na raiz do repositório**:
+
+```bash
+cd frontend
+npm test
+```
+
+Validam interações do formulário (incluindo importação e limites de arquivo) e a exibição do histórico. **Não é preciso iniciar o servidor Vite para rodar esses testes.**
+
+### 3. Testes de integração da API (Supertest + PostgreSQL)
+
+**Antes de executar, prepare o banco de testes separado.** No pgAdmin, crie `analisador_documentos_teste` ou execute no banco administrativo `postgres`:
+
+```sql
+CREATE DATABASE analisador_documentos_teste;
+```
+
+Na pasta `backend`, crie **`backend/.env.test`** copiando `.env.example` e altere-o para usar **somente o banco de testes**:
+
+```dotenv
+DATABASE_URL="postgresql://postgres:SUA_SENHA@localhost:5432/analisador_documentos_teste?schema=public"
+PORT=3001
+JWT_SECRET="CHAVE_ALEATORIA_EXCLUSIVA_PARA_TESTES"
+ANALISADOR=regras
+GEMINI_API_KEY=
+GEMINI_MODELO=gemini-3.1-flash-lite
+```
+
+Com o terminal **dentro de `backend`**, execute:
+
+```bash
+npx dotenv -e .env.test -- prisma migrate deploy
+npm run test:api
+```
+
+O primeiro comando cria/atualiza as tabelas **no banco de testes**; o segundo executa as requisições automatizadas de integração. A configuração `vitest.api.config.ts` verifica se o banco é `analisador_documentos_teste` para reduzir o risco de executar testes destrutivos no banco principal. **Nunca aponte `.env.test` para `analisador_documentos`.**
+
+Esses testes cobrem os endpoints da API, autenticação, permissões, CRUD, filtros/paginação e funcionalidades adicionais como histórico e importação de arquivos.
+
+### 4. Verificar compilação e qualidade do código
+
+Os comandos abaixo também devem terminar sem erros. Execute-os nas respectivas pastas:
+
+| Pasta | Comando | Finalidade |
+| --- | --- | --- |
+| `backend` | `npm run build` | Compilar o TypeScript do servidor |
+| `frontend` | `npm run build` | Verificar os tipos e gerar a versão de produção |
+| `frontend` | `npm run lint` | Verificar regras do ESLint |
+
+> **Dica:** `npm ci` instala as versões registradas nos arquivos `package-lock.json`. Se ocorrer erro de resolução de dependências do React Testing Library em alguma versão do npm, tente `npm ci --legacy-peer-deps` **somente na pasta `frontend`**.
 
 ## Fluxo de utilização
 1. Acesse **Cadastro** e crie uma conta de teste usando dados fictícios.
 2. Faça **Login** com o e-mail e a senha cadastrados.
 3. Na lista de documentos, use **Novo documento** para informar título e conteúdo.
 4. Selecione o título de um documento para visualizar seus detalhes.
-5. Se você for o autor, utilize **Analisar documento** para gerar e armazenar classificação, resumo e pontos de atenção.
-6. Se necessário, **edite** ou **exclua** seu documento. Alterar apenas o título mantém a análise; modificar o conteúdo remove a análise anterior e permite gerar outra.
-7. Utilize **Ordenar por**, **Mostrar apenas meus documentos** e **Sair** conforme necessário.
+5. Se você for o autor, utilize **Analisar documento** para gerar e armazenar classificação, resumo e pontos de atenção. É possível importar um TXT/PDF antes de salvar.
+6. Se necessário, **edite** ou **exclua** seu documento. Alterar apenas o título mantém a análise vigente; modificar o conteúdo arquiva a anterior no histórico.
+7. Utilize **Buscar por título**, **Paginação**, **Ordenar por**, **Mostrar apenas meus documentos**, **Consultar histórico** e **Sair** conforme necessário.
 
 ## Endpoints da API
 **URL base:** `http://localhost:3001`
@@ -203,14 +260,17 @@ Authorization: Bearer SEU_TOKEN_JWT
 | `GET` | `/health` | Verificar a API | `200` |
 | `POST` | `/auth/cadastro` | Cadastrar usuário | `201` |
 | `POST` | `/auth/login` | Autenticar usuário | `200` |
-| `GET` | `/documentos?ordem=desc&meus=false` | Listar, ordenar e filtrar documentos | `200` |
+| `GET` | `/documentos?busca=contrato&pagina=1&limite=10&ordem=desc&meus=false` | Buscar, filtrar e paginar documentos | `200` |
 | `POST` | `/documentos` | Criar documento | `201` |
 | `GET` | `/documentos/:id` | Consultar detalhes e análise | `200` |
 | `PUT` | `/documentos/:id` | Atualizar título e conteúdo | `200` |
 | `DELETE` | `/documentos/:id` | Excluir documento | `204` |
 | `POST` | `/documentos/:id/analise` | Gerar ou substituir análise | `201` |
+| `POST` | `/documentos/extrair-texto` | Extrair texto de TXT/PDF (`multipart/form-data`) | `200` |
+| `GET` | `/documentos/:id/historico` | Consultar histórico do próprio documento | `200` |
+| `GET` | `/historico-analises` | Consultar histórico de análises do usuário | `200` |
 
-Os endpoints `/documentos` exigem autenticação. Edição, exclusão e análise exigem que o usuário seja o autor do documento.
+Todas as rotas de documentos e histórico exigem autenticação. Edição, exclusão, análise e consulta do histórico de um documento exigem que o usuário seja seu autor.
 
 ### Exemplos de requisições e respostas
 **Cadastro — `POST /auth/cadastro`**
@@ -282,6 +342,9 @@ Os endpoints `/documentos` exigem autenticação. Edição, exclusão e análise
 
 - `ordem`: `desc` (padrão) ou `asc`, pela data de criação.
 - `meus`: `false` (padrão) ou `true`.
+- `busca`: pesquisa parcial e sem distinção entre maiúsculas e minúsculas no título.
+- `pagina`: número da página (começa em `1`); `limite`: registros por página (máximo `100`).
+- Sem `pagina`/`limite`, a API mantém o array original; com paginação, retorna `{ "dados": [...], "paginacao": { "pagina": 1, "limite": 10, "total": 1, "total_paginas": 1 } }`.
 - Valores diferentes dos permitidos retornam `400`.
 
 **Resposta `200` (exemplo):**
@@ -361,7 +424,7 @@ O processo segue as regras definidas no desafio:
 4. **Resumo:** concatenação das duas primeiras frases, truncada em 300 caracteres Unicode quando necessário.
 5. **Pontos de atenção:** frases que contenham termos como `multa`, `prazo`, `juros`, `rescisão` e `honorários`, sem duplicação de frases idênticas.
 
-O glossário fica em `backend/src/analyzers/glossario.ts`. A fábrica de analisadores lê `ANALISADOR` (valores suportados: `regras` e `gemini`). A análise é armazenada com tipo, resumo, pontos de atenção, identificador do analisador e data. Uma nova execução substitui a análise anterior.
+O glossário fica em `backend/src/analyzers/glossario.ts`. A fábrica de analisadores lê `ANALISADOR` (valores suportados: `regras` e `gemini`). A análise é armazenada com tipo, resumo, pontos de atenção, identificador do analisador e data. Uma nova execução substitui a análise vigente, arquivando a versão anterior no histórico.
 
 ### Avaliação crítica dos exemplos oficiais
 | Exemplo | Resultado das regras | Acertos e limitações observadas |
@@ -425,69 +488,6 @@ No formulário de criação ou edição, use **Importar arquivo (.txt ou .pdf)**
 - PDF protegido, corrompido ou sem texto retorna erro informativo; imagens digitalizadas exigiriam OCR, não incluído.
 - O processamento é local ao back-end; **somente ao clicar em Analisar** é que o texto será enviado ao Gemini, se esse analisador estiver ativado.
 - Para extrair PDFs usa-se a biblioteca `pdf-parse` v2 (`PDFParse#getText()`).
-
-## Testes de interface
-
-Além dos testes unitários do analisador e testes de integração da API com PostgreSQL isolado, a interface possui testes com **React Testing Library, Vitest e jsdom**. Os testes verificam o preenchimento do formulário após importar um arquivo, a rejeição de arquivos maiores que o limite e a renderização de históricos de documentos excluídos.
-
-Na pasta `frontend`, execute:
-
-```bash
-npm test
-npm run build
-npm run lint
-```
-
-**Primeira instalação:** atualize as dependências conforme as instruções do pacote e execute `npx prisma migrate deploy` e `npx prisma generate` no `backend` antes de iniciar os serviços.
-
-## Testes automatizados
-Os testes são executados a partir da pasta `backend`.
-
-### Testes obrigatórios do analisador
-```bash
-cd backend
-npm test
-```
-
-Os **6 casos obrigatórios** leem diretamente `exemplos/01` a `exemplos/06` e verificam igualdade exata com cada `.esperado.json`, sem duplicar os textos no código dos testes.
-
-### Testes de integração da API
-Para proteger os dados de desenvolvimento, utilize **outro banco PostgreSQL**, chamado `analisador_documentos_teste`.
-
-1. Crie o banco `analisador_documentos_teste` no pgAdmin (ou usando `CREATE DATABASE analisador_documentos_teste;` conectado ao banco administrativo).
-2. Na pasta `backend`, crie o arquivo **`.env.test`** com configurações exclusivas para testes:
-
-   ```dotenv
-   DATABASE_URL="postgresql://postgres:SUA_SENHA@localhost:5432/analisador_documentos_teste?schema=public"
-   PORT=3001
-   JWT_SECRET="CHAVE_FICTICIA_EXCLUSIVA_PARA_TESTES"
-   ANALISADOR=regras
-   ```
-
-3. Com o terminal na pasta `backend`, execute:
-
-   ```bash
-   npx dotenv -e .env.test -- prisma migrate deploy
-   npm run test:api
-   ```
-
-O comando `test:api` usa a configuração `vitest.api.config.ts`, que confere se a URL termina no banco esperado antes da execução. **Não utilize o banco principal para os testes de integração.**
-
-Os **11 testes de integração existentes** cobrem cadastro e e-mail duplicado, login e senha incorreta, autenticação obrigatória, criação e preservação do texto, validações, permissões, invalidação da análise após alteração, filtros e exclusão. A ordenação válida `asc`/`desc` foi verificada no fluxo da interface, mas ainda pode receber uma asserção automatizada específica.
-
-Para validar a compilação do back-end:
-
-```bash
-npm run build
-```
-
-Para validar o front-end, em outro terminal:
-
-```bash
-cd frontend
-npm run build
-npm run lint
-```
 
 ## Decisões técnicas
 - **React + Vite + TypeScript:** interface modular e desenvolvimento rápido, com verificação de tipos na compilação.
