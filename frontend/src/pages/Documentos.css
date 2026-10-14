@@ -1,0 +1,18 @@
+/* Controles de busca e paginação - herdam a identidade de index.css */
+.busca-documentos { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.busca-documentos-acoes { display: flex; flex-wrap: wrap; gap: 9px; }
+.busca-documentos-acoes input { flex: 1 1 180px; min-width: 0; }
+.busca-documentos-acoes button { white-space: nowrap; }
+.busca-documentos-acoes .botao-limpar { background: #f4f6fb; color: #596881; border-color: #dfe4ed; box-shadow: none; }
+.busca-documentos-acoes .botao-limpar:hover:not(:disabled) { background: #e9edfa; color: #444c79; box-shadow: none; }
+.paginacao-documentos { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding: 18px 2px; margin: 24px 0 0; }
+.paginacao-documentos p { margin: 0; color: #7a879c; font-size: 13px; }
+.paginacao-documentos-acoes { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.paginacao-documentos-acoes span { color: #50607e; font-size: 12px; font-weight: 700; }
+.paginacao-documentos-acoes button { min-height: 38px; padding: 9px 13px; background: white; color: #4f59c5; border: 1px solid #dce1f7; box-shadow: none; font-size: 12px; }
+.paginacao-documentos-acoes button:hover:not(:disabled) { background: #eff0ff; color: #353da8; box-shadow: none; }
+@media (max-width: 760px) {
+  .busca-documentos { flex-basis: auto; }
+  .paginacao-documentos { align-items: stretch; flex-direction: column; }
+  .paginacao-documentos-acoes { justify-content: space-between; }
+}
