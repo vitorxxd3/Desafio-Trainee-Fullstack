@@ -26,6 +26,8 @@ export function DocumentoForm() {
   const [conteudo, setConteudo] = useState("");
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [sucessoImportacao, setSucessoImportacao] = useState("");
   const [carregando, setCarregando] = useState(editando);
 
   useEffect(() => {
@@ -79,6 +81,38 @@ export function DocumentoForm() {
 
   const quantidadeTitulo = Array.from(titulo).length;
   const quantidadeConteudo = Array.from(conteudo).length;
+
+  async function importarArquivo(arquivo: File | null) {
+    if (!arquivo) return;
+    setErro("");
+    setSucessoImportacao("");
+    if (!/\.(txt|pdf)$/i.test(arquivo.name)) {
+      setErro("Selecione um arquivo .txt ou .pdf.");
+      return;
+    }
+    if (arquivo.size > 5 * 1024 * 1024) {
+      setErro("O arquivo deve ter no máximo 5 MB.");
+      return;
+    }
+    if (conteudo.trim() && !window.confirm("Substituir o texto atual pelo conteúdo do arquivo?")) return;
+
+    setImportando(true);
+    try {
+      const dados = new FormData();
+      dados.append("arquivo", arquivo);
+      const resposta = await api.post<{ conteudo: string }>("/documentos/extrair-texto", dados, {
+        headers: { "Content-Type": undefined },
+      });
+      setConteudo(resposta.data.conteudo);
+      setSucessoImportacao("Texto extraído! Revise o conteúdo antes de salvar.");
+    } catch (error) {
+      setErro(axios.isAxiosError(error)
+        ? error.response?.data?.mensagem ?? "Não foi possível importar o arquivo."
+        : "Não foi possível importar o arquivo.");
+    } finally {
+      setImportando(false);
+    }
+  }
 
   async function salvarDocumento(
     event: FormEvent<HTMLFormElement>
@@ -159,6 +193,22 @@ export function DocumentoForm() {
 
         <small>{quantidadeConteudo}/50.000 caracteres</small>
 
+        <label htmlFor="arquivo-importacao">Importar arquivo (.txt ou .pdf)</label>
+        <input
+          id="arquivo-importacao"
+          type="file"
+          accept=".txt,.pdf,text/plain,application/pdf"
+          disabled={salvando || importando}
+          onChange={(event) => {
+            const arquivo = event.target.files?.[0] ?? null;
+            void importarArquivo(arquivo);
+            event.target.value = "";
+          }}
+        />
+        <small>Máximo 5 MB. PDF digitalizado sem texto não é suportado.</small>
+        {importando && <p role="status">Extraindo texto do arquivo...</p>}
+        {sucessoImportacao && <p className="mensagem-sucesso" role="status">{sucessoImportacao}</p>}
+
         {erro && (
           <p className="mensagem-erro" role="alert">
             {erro}
@@ -170,7 +220,7 @@ export function DocumentoForm() {
 
           <button
             type="submit"
-           disabled={salvando}
+           disabled={salvando || importando}
           >
             {salvando ? "Salvando..." : "Salvar documento"}
           </button>

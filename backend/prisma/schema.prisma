@@ -16,6 +16,7 @@ model Usuario {
   criado_em  DateTime    @default(now())
 
   documentos Documento[]
+  historico_analises HistoricoAnalise[]
 
   @@map("usuarios")
 }
@@ -48,4 +49,23 @@ documento Documento @relation(fields: [documento_id], references: [id], onDelete
 
 
   @@map("analises")
+}
+
+// Snapshot sem FK com documento: permanece acessível após exclusão.
+model HistoricoAnalise {
+  id                  Int      @id @default(autoincrement())
+  documento_id_origem Int
+  titulo_documento    String   @db.VarChar(200)
+  autor_id            Int
+  motivo              String   @db.VarChar(25)
+  tipo                String   @db.VarChar(20)
+  resumo              String   @db.Text
+  pontos_de_atencao   Json
+  analisador          String   @db.VarChar(30)
+  analisada_em        DateTime
+  arquivada_em        DateTime @default(now())
+  autor Usuario @relation(fields: [autor_id], references: [id], onDelete: Cascade)
+  @@index([autor_id, arquivada_em])
+  @@index([documento_id_origem, autor_id])
+  @@map("historico_analises")
 }

@@ -1,3 +1,5 @@
+import { receberArquivo, extrairTexto } from "../controllers/upload.controller.js";
+import { historicoDoDocumento } from "../controllers/historico.controller.js";
 
 import { Router } from "express";
 import { gerarAnalise } from "../controllers/analise.controller.js";
@@ -21,9 +23,11 @@ documentosRoutes.get("/", listarDocumentos);
 
 
 documentosRoutes.post("/", cadastrarDocumento);
+documentosRoutes.post("/extrair-texto", receberArquivo, extrairTexto);
 
 
 documentosRoutes.get("/:id", detalharDocumento);
+documentosRoutes.get("/:id/historico", historicoDoDocumento);
 
 
 documentosRoutes.put("/:id", editarDocumento);

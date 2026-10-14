@@ -33,24 +33,7 @@ describe("Documentos da API", () => {
 
     expect(cadastro.status).toBe(201);
 
-    
-it("aceita conteúdo com 50.000 caracteres Unicode", async () => {
-  const conteudo = "🙂".repeat(50000);
-
-  const resposta = await request(app)
-    .post("/documentos")
-    .set("Authorization", `Bearer ${autor.token}`)
-    .send({
-      titulo: "Documento com caracteres Unicode",
-      conteudo,
-    });
-
-  expect(resposta.status).toBe(201);
-  expect(resposta.body.conteudo).toBe(conteudo);
-});
-
-
-    const login = await request(app)
+const login = await request(app)
       .post("/auth/login")
       .send({ email, senha });
 
@@ -111,6 +94,21 @@ it("aceita conteúdo com 50.000 caracteres Unicode", async () => {
     }
 
     await prisma.$disconnect();
+  });
+
+  it("aceita conteúdo com 50.000 caracteres Unicode", async () => {
+    const conteudo = "🙂".repeat(50000);
+  
+    const resposta = await request(app)
+      .post("/documentos")
+      .set("Authorization", `Bearer ${autor.token}`)
+      .send({
+        titulo: "Documento com caracteres Unicode",
+        conteudo,
+      });
+  
+    expect(resposta.status).toBe(201);
+    expect(resposta.body.conteudo).toBe(conteudo);
   });
 
   it("cria documento e preserva o conteúdo original", async () => {

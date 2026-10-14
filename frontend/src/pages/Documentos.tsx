@@ -125,6 +125,7 @@ export function Documentos() {
       <section>
         <div className="lista-cabecalho">
           <h2>Documentos cadastrados</h2>
+          <Link to="/historico-analises">Consultar histórico de análises</Link>
           <Link className="botao-link" to="/documentos/novo">
             + Novo documento
           </Link>

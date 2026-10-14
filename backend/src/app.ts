@@ -1,3 +1,5 @@
+import { historicoDoAutor } from "./controllers/historico.controller.js";
+import { autenticar } from "./middlewares/auth.middleware.js";
 
 import express from "express";
 import cors from "cors";
@@ -21,6 +23,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/auth", authRoutes);
 app.use("/documentos", documentosRoutes);
+app.get("/historico-analises", autenticar, historicoDoAutor);
 
 // Padronização dos erros de leitura do JSON.
 const tratarErros: ErrorRequestHandler = (

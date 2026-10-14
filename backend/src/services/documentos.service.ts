@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import type { DocumentoInput } from "../schemas/documento.schema.js";
+import { arquivarAnalise } from "./historico.service.js";
 
 type Ordem = "asc" | "desc";
 
@@ -137,7 +138,7 @@ export async function atualizarDocumento(
   await prisma.$transaction(async (tx) => {
     const documentoAtual = await tx.documento.findUnique({
       where: { id },
-      select: { autor_id: true, conteudo: true },
+      select: { autor_id: true, conteudo: true, titulo: true },
     });
 
     if (!documentoAtual) throw new DocumentoNaoEncontradoError();
@@ -152,6 +153,7 @@ export async function atualizarDocumento(
     });
 
     if (conteudoAlterado) {
+      await arquivarAnalise(tx, { ...documentoAtual, id }, "CONTEUDO_ALTERADO");
       await tx.analise.deleteMany({ where: { documento_id: id } });
     }
   });
@@ -165,7 +167,7 @@ export async function removerDocumento(id: number, usuarioId: number) {
   await prisma.$transaction(async (tx) => {
     const documento = await tx.documento.findUnique({
       where: { id },
-      select: { autor_id: true },
+      select: { autor_id: true, titulo: true },
     });
 
     if (!documento) throw new DocumentoNaoEncontradoError();
@@ -173,6 +175,7 @@ export async function removerDocumento(id: number, usuarioId: number) {
       throw new DocumentoSemPermissaoError();
     }
 
+    await arquivarAnalise(tx, { ...documento, id }, "DOCUMENTO_EXCLUIDO");
     await tx.documento.delete({ where: { id } });
   });
 }

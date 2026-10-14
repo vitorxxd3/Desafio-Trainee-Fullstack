@@ -1,3 +1,4 @@
+import { HistoricoAnalises } from "./pages/HistoricoAnalises";
 
 import {
   BrowserRouter,
@@ -36,6 +37,7 @@ function App() {
         <Route path="/cadastro" element={<Cadastro />} />
 
         <Route element={<RotaProtegida />}>
+          <Route path="/historico-analises" element={<HistoricoAnalises />} />
 
           <Route
   path="/documentos/:id"

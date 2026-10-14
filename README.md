@@ -401,6 +401,45 @@ Os testes de IA usam a API simulada, sem rede ou credenciais. Execute `npm test`
 
 **Limitações:** modelos de linguagem podem variar na interpretação e não substituem revisão humana. A opção com IA depende de conexão, cotas e credenciais válidas. Utilize somente documentos fictícios; dados enviados à API externa estão sujeitos às políticas de tratamento de dados do provedor.
 
+## Histórico de análises
+
+O sistema conserva a análise vigente em `analises` e arquiva a versão anterior em `historico_analises`, dentro da **mesma transação PostgreSQL**, em três situações:
+
+- `SUBSTITUIDA`: uma nova análise foi gerada (por regras ou Gemini);
+- `CONTEUDO_ALTERADO`: o texto do documento foi editado;
+- `DOCUMENTO_EXCLUIDO`: o documento foi excluído pelo autor.
+
+Cada registro guarda o título e ID original, classificação, resumo, pontos de atenção, analisador, data da análise e data do arquivamento. O histórico não possui chave estrangeira para o documento, portanto continua consultável após a exclusão. Usuários só podem consultar o histórico dos documentos que criaram.
+
+- `GET /historico-analises`: até 100 análises arquivadas do usuário autenticado, por data decrescente.
+- `GET /documentos/:id/historico`: até 100 análises arquivadas do documento; exige ser seu autor e que o documento ainda exista.
+
+A interface possui **Consultar histórico de análises**, acessível na lista de documentos e na página de detalhes do documento.
+
+## Importação de arquivo `.txt` e `.pdf`
+
+No formulário de criação ou edição, use **Importar arquivo (.txt ou .pdf)**. A API recebe `multipart/form-data` no endpoint protegido `POST /documentos/extrair-texto`, com o campo `arquivo`. Ela lê o arquivo em memória e responde `{ "conteudo": "texto extraído" }`, sem salvar o arquivo no servidor ou criar automaticamente o documento. O usuário deve conferir e clicar em **Salvar documento**.
+
+- Tamanho máximo de 5 MB; texto extraído até 50.000 caracteres Unicode.
+- TXT deve estar em UTF-8; PDFs devem conter texto selecionável, não apenas imagens digitalizadas.
+- PDF protegido, corrompido ou sem texto retorna erro informativo; imagens digitalizadas exigiriam OCR, não incluído.
+- O processamento é local ao back-end; **somente ao clicar em Analisar** é que o texto será enviado ao Gemini, se esse analisador estiver ativado.
+- Para extrair PDFs usa-se a biblioteca `pdf-parse` v2 (`PDFParse#getText()`).
+
+## Testes de interface
+
+Além dos testes unitários do analisador e testes de integração da API com PostgreSQL isolado, a interface possui testes com **React Testing Library, Vitest e jsdom**. Os testes verificam o preenchimento do formulário após importar um arquivo, a rejeição de arquivos maiores que o limite e a renderização de históricos de documentos excluídos.
+
+Na pasta `frontend`, execute:
+
+```bash
+npm test
+npm run build
+npm run lint
+```
+
+**Primeira instalação:** atualize as dependências conforme as instruções do pacote e execute `npx prisma migrate deploy` e `npx prisma generate` no `backend` antes de iniciar os serviços.
+
 ## Testes automatizados
 Os testes são executados a partir da pasta `backend`.
 
@@ -462,9 +501,8 @@ npm run lint
 ## Limitações e melhorias futuras
 A proposta prioriza os requisitos obrigatórios e não inclui nesta versão:
 
-- Upload de arquivos `.pdf`/`.txt` ou histórico de versões das análises.
-- Paginação, busca por título, documentação Swagger e deploy público.
-- Testes automatizados específicos do front-end e pipeline de integração contínua.
+- Documentação Swagger e deploy público.
+- Pipeline de integração contínua.
 
 Melhorias recomendadas para uma evolução do projeto: tratamento global de token expirado em todas as chamadas da interface; mensagens de acesso negado mais explícitas nos formulários; remoção de arquivos não utilizados do template inicial do Vite; expansão dos testes para verificar a ordem `asc`/`desc` e demais casos extremos; restrição de CORS e reforço de proteções contra abuso para um eventual ambiente de produção. O analisador Gemini adiciona dependência de credenciais, rede e cotas de uso do provedor.
 

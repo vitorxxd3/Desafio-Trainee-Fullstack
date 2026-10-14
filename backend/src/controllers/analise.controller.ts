@@ -1,3 +1,4 @@
+import { DocumentoAlteradoDuranteAnaliseError } from "../services/analise.service.js";
 import type { Request, Response } from "express";
 import { analisarDocumento } from "../services/analise.service.js";
 import { ErroAnalisadorIA } from "../analyzers/erro-analisador-ia.js";
@@ -37,6 +38,10 @@ export async function gerarAnalise(req: Request, res: Response) {
         erro: "SEM_PERMISSAO",
         mensagem: error.message,
       });
+    }
+
+    if (error instanceof DocumentoAlteradoDuranteAnaliseError) {
+      return res.status(409).json({ erro: "CONFLITO", mensagem: error.message });
     }
 
     if (error instanceof ErroAnalisadorIA) {
